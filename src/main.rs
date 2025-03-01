@@ -55,10 +55,25 @@ async fn run() {
         source: wgpu::ShaderSource::Wgsl(shader_code.into()),
     });
 
-    // Create compute pipeline
+    // Define bind group layout before pipeline creation
+    let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("Bind Group Layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+
+    // Use the bind group layout in the pipeline layout
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Pipeline Layout"),
-        bind_group_layouts: &[],
+        bind_group_layouts: &[&bind_group_layout], // ✅ Correctly specify the layout
         push_constant_ranges: &[],
     });
 
