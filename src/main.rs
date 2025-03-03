@@ -6,6 +6,8 @@ async fn run() {
     let instance = wgpu::Instance::default();
     let adapters = instance.enumerate_adapters(wgpu::Backends::all());
 
+    const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
+
     if adapters.is_empty() {
         println!("No adapters found!");
     } else {
@@ -36,24 +38,26 @@ async fn run() {
         .expect("Failed to create device");
 
     // Input data
-    // TODO: figure out how to do generic alignment properly
-    // Also, figure out COPY_BUFFER_ALIGNMENT issue with different sized arrays
-    // because it needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
-    // whatever that is. So you will need to pad with zeroes and then remove them after.
-    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8];
-    let buffer_size = (input_data.len() * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
+    // TODO: figure out how to do generic alignment properly, only u32 works rn
+    // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
+    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9];
+    let input_len = input_data.len();
+    let buffer_size = (input_len * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
-    let length_data = vec![input_data.len() as u32];  // Buffer containing the length
+    let length_data = vec![input_len as u32];  // Buffer containing the length
     let length_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Length Buffer"),
         contents: bytemuck::cast_slice(&length_data),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
-
+    // If input data length is not aligned, pad it
+    let mut padded_input_data = input_data.clone();
+    let padding = (COPY_BUFFER_ALIGNMENT - (input_len as u64) % COPY_BUFFER_ALIGNMENT) % COPY_BUFFER_ALIGNMENT;
+    padded_input_data.extend(vec![0u32; padding as usize]); // Fill the remaining space with zeroes
     // Create input buffer (READ-ONLY)
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
-        contents: bytemuck::cast_slice(&input_data),
+        contents: bytemuck::cast_slice(&padded_input_data),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
 
@@ -190,7 +194,7 @@ async fn run() {
         });
         compute_pass.set_pipeline(&compute_pipeline);
         compute_pass.set_bind_group(0, &bind_group, &[]);
-        compute_pass.dispatch_workgroups((input_data.len() as u32).div_ceil(64), 1, 1);
+        compute_pass.dispatch_workgroups((input_len as u32).div_ceil(64), 1, 1);
     }
 
     // Copy results back to CPU-readable buffer
