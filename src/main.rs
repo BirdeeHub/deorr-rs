@@ -1,5 +1,6 @@
 use wgpu::util::DeviceExt;
 use pollster::block_on;
+use std::time::Instant;
 
 fn get_adapter() -> wgpu::Adapter {
     // Initialize GPU
@@ -227,8 +228,12 @@ async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
 fn main() {
     let adapter = get_adapter();
 
+    let start = Instant::now();
+
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
     println!("Input:  {:?}", input_data);
     let output_data = block_on(run(adapter,input_data));
     println!("Output: {:?}", output_data);
+
+    println!("Time taken: {:?}", start.elapsed());
 }
