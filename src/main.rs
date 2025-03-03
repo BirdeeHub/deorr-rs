@@ -6,6 +6,7 @@ async fn run() {
     let instance = wgpu::Instance::default();
     let adapters = instance.enumerate_adapters(wgpu::Backends::all());
 
+    // TODO: figure out how to detect this system dependent value
     const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
 
     if adapters.is_empty() {
