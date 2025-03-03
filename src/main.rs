@@ -62,12 +62,10 @@ async fn run() {
         mapped_at_creation: false,
     });
 
-    // // Compute shader in WGSL
     // TODO: input buffer was misaligned when using floats, figure out how do align it properly
     // let shader_code = r#"
     //     @group(0) @binding(0) var<storage, read> input_data: array<f32>;
     //     @group(0) @binding(1) var<storage, read_write> output_data: array<f32>;
-    //
     //     @compute @workgroup_size(64)
     //     fn main(@builtin(global_invocation_id) id: vec3u) {
     //         let i = id.x;
@@ -76,6 +74,7 @@ async fn run() {
     //         }
     //     }
     // "#;
+
     // Compute shader in WGSL
     let shader_code = r#"
         @group(0) @binding(0) var<storage, read> input_data: array<u32>;
