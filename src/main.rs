@@ -39,7 +39,7 @@ async fn run() {
     // TODO: figure out how to do generic alignment properly
     // Also, figure out COPY_BUFFER_ALIGNMENT issue with different sized arrays
     // because it needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
-    // whatever that is.
+    // whatever that is. So you will need to pad with zeroes and then remove them after.
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8];
     let buffer_size = (input_data.len() * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
