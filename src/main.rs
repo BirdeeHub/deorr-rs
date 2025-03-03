@@ -61,7 +61,7 @@ async fn run() {
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
         contents: bytemuck::cast_slice(&padded_input_data),
-        usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
+        usage: wgpu::BufferUsages::STORAGE, // No COPY_DST, since we don’t modify it
     });
 
     // Create output buffer (separate, writable)
