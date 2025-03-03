@@ -36,13 +36,13 @@ async fn run() {
         .expect("Failed to create device");
 
     // Input data (array of f32 numbers)
-    let input_data = vec![1, 2, 3, 4, 5, 6, 7, 8];
-    let buffer_size = (input_data.len() * std::mem::size_of::<u8>()) as wgpu::BufferAddress;
+    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8];
+    let buffer_size = (input_data.len() * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
     // Create input buffer (READ-ONLY)
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
-        contents: &input_data,
+        contents: bytemuck::cast_slice(&input_data),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
 
@@ -62,19 +62,7 @@ async fn run() {
         mapped_at_creation: false,
     });
 
-    // TODO: input buffer was misaligned when using floats, figure out how do align it properly
-    // let shader_code = r#"
-    //     @group(0) @binding(0) var<storage, read> input_data: array<f32>;
-    //     @group(0) @binding(1) var<storage, read_write> output_data: array<f32>;
-    //     @compute @workgroup_size(64)
-    //     fn main(@builtin(global_invocation_id) id: vec3u) {
-    //         let i = id.x;
-    //         if (i < arrayLength(&input_data)) {
-    //             output_data[i] = input_data[i] * 2.0; // Read from input, write to output
-    //         }
-    //     }
-    // "#;
-
+    // TODO: input buffer was misaligned when using floats, figure out how to align it properly
     // Compute shader in WGSL
     let shader_code = r#"
         @group(0) @binding(0) var<storage, read> input_data: array<u32>;
@@ -82,7 +70,20 @@ async fn run() {
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
             let i = id.x;
-            output_data[i] = input_data[i];
+            if (i >= arrayLength(&input_data)) {
+                return;
+            }
+            let v = input_data[i];
+            var finali = 0;
+            for (var j = 0u; j < arrayLength(&input_data); j++) {
+                if (input_data[j] == v && j < u32(i)) {
+                    finali += 1;
+                }
+                if (input_data[j] < v) {
+                    finali += 1;
+                }
+            }
+            output_data[finali] = v;
         }
     "#;
 
@@ -180,7 +181,7 @@ async fn run() {
 
     // Get mapped buffer data
     let mapped_range = buffer_slice.get_mapped_range();
-    let result_data: Vec<u8> = bytemuck::cast_slice(&mapped_range).to_vec();
+    let result_data: Vec<u32> = bytemuck::cast_slice(&mapped_range).to_vec();
     println!("Input:  {:?}", input_data);
     println!("Output: {:?}", result_data);
 
