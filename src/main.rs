@@ -1,12 +1,9 @@
 use wgpu::util::DeviceExt;
 use pollster::block_on;
 
-async fn run() {
+fn get_adapter() -> wgpu::Adapter {
     // Initialize GPU
     let instance = wgpu::Instance::default();
-
-    // TODO: figure out how to detect this system dependent value
-    const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
 
     let adapters = instance.enumerate_adapters(wgpu::Backends::all());
 
@@ -18,28 +15,33 @@ async fn run() {
         }
     }
 
-    let adapter = adapters
-        .iter()
+    adapters.clone()
+        .into_iter()
         .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu) // Prefer discrete GPU
         .or_else(|| {
             // If no discrete GPU, try for integrated GPU
-            adapters.iter().find(|a| a.get_info().device_type == wgpu::DeviceType::IntegratedGpu)
+            adapters.iter().find(|a| a.get_info().device_type == wgpu::DeviceType::IntegratedGpu).cloned()
         })
         .or_else(|| {
             // If neither discrete nor integrated GPU, fall back to any available adapter
             println!("No discrete or integrated GPU found. Falling back to software rendering.");
-            adapters.first()  // Get the first available adapter
+            adapters.first().cloned() // Get the first available adapter
         })
-        .expect("Failed to find a suitable GPU adapter or fallback to software");
+        .expect("Failed to find a suitable GPU adapter or fallback to software")
+}
+
+async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
 
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor::default(), None)
         .await
         .expect("Failed to create device");
 
+    // TODO: figure out how to detect this system dependent value
+    const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
+
     // Input data
     // TODO: figure out how to do generic alignment properly, only u32 works rn
-    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
@@ -215,14 +217,17 @@ async fn run() {
     // Get mapped buffer data
     let mapped_range = buffer_slice.get_mapped_range();
     let result_data: Vec<u32> = bytemuck::cast_slice(&mapped_range).to_vec();
-    println!("Input:  {:?}", input_data);
-    println!("Output: {:?}", result_data);
 
     // Unmap buffer
     drop(mapped_range);
     readback_buffer.unmap();
+    result_data
 }
 
 fn main() {
-    block_on(run());
+    let adapter = get_adapter();
+    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
+    println!("Input:  {:?}", input_data);
+    let output_data = block_on(run(adapter,input_data));
+    println!("Output: {:?}", output_data);
 }
