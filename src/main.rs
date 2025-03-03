@@ -49,11 +49,13 @@ async fn run() {
         contents: bytemuck::cast_slice(&length_data),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
+
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
     let mut padded_input_data = input_data.clone();
     let padding = (COPY_BUFFER_ALIGNMENT - (input_len as u64) % COPY_BUFFER_ALIGNMENT) % COPY_BUFFER_ALIGNMENT;
     padded_input_data.extend(vec![0u32; padding as usize]); // Fill the remaining space with zeroes
+
     // Create input buffer (READ-ONLY)
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
