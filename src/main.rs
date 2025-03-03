@@ -220,8 +220,7 @@ async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> 
 }
 
 async fn request_device(adapter: wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
-    adapter.request_device(&wgpu::DeviceDescriptor::default(), None)
-        .await
+    adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
 fn main() {
