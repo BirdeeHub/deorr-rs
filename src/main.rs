@@ -43,6 +43,13 @@ async fn run() {
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8];
     let buffer_size = (input_data.len() * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
+    let length_data = vec![input_data.len() as u32];  // Buffer containing the length
+    let length_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Length Buffer"),
+        contents: bytemuck::cast_slice(&length_data),
+        usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
+    });
+
     // Create input buffer (READ-ONLY)
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
@@ -71,15 +78,16 @@ async fn run() {
     let shader_code = r#"
         @group(0) @binding(0) var<storage, read> input_data: array<u32>;
         @group(0) @binding(1) var<storage, read_write> output_data: array<u32>;
+        @group(0) @binding(2) var<storage, read> length_data: u32;
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
             let i = id.x;
-            if (i >= arrayLength(&input_data)) {
+            if (i >= length_data) {
                 return;
             }
             let v = input_data[i];
             var finali = 0;
-            for (var j = 0u; j < arrayLength(&input_data); j++) {
+            for (var j = 0u; j < length_data; j++) {
                 if (input_data[j] == v && j < u32(i)) {
                     finali += 1;
                 }
@@ -121,6 +129,16 @@ async fn run() {
                 },
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,  // New binding for length
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
         ],
     });
 
@@ -136,8 +154,8 @@ async fn run() {
         layout: Some(&pipeline_layout),
         module: &shader_module,
         entry_point: Some("main"),
-        compilation_options: Default::default(), // New field
-        cache: None, // New field
+        compilation_options: Default::default(),
+        cache: None,
     });
 
     // Create bind group
@@ -151,6 +169,10 @@ async fn run() {
             wgpu::BindGroupEntry {
                 binding: 1,
                 resource: output_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: length_buffer.as_entire_binding(),
             },
         ],
         label: Some("Bind Group"),
