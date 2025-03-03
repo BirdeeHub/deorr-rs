@@ -51,6 +51,7 @@ async fn run(device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> 
     padded_input_data.extend(vec![0u32; padding as usize]);
 
     // Create input buffer (READ-ONLY)
+    // TODO: figure out how to do generic alignment properly, only u32 works rn
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
         contents: bytemuck::cast_slice(&padded_input_data),
@@ -215,7 +216,7 @@ async fn run(device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> 
 
     // Get mapped buffer data
     let mapped_range = buffer_slice.get_mapped_range();
-    let result_data: Vec<u32> = bytemuck::cast_slice(&mapped_range).to_vec();
+    let result_data = bytemuck::cast_slice(&mapped_range).to_vec();
 
     // Unmap buffer
     drop(mapped_range);
