@@ -95,7 +95,7 @@ async fn run() {
             let v = input_data[i];
             var finali = 0;
             for (var j = 0u; j < length_data; j++) {
-                if (input_data[j] == v && j < u32(i)) {
+                if (input_data[j] == v && j < i) {
                     finali += 1;
                 }
                 if (input_data[j] < v) {
