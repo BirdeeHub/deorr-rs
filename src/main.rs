@@ -30,6 +30,10 @@ fn get_adapter() -> Option<wgpu::Adapter> {
         })
 }
 
+async fn request_device(adapter: wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
+    adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
+}
+
 async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> Vec<u32> {
 
     // TODO: figure out how to detect this system dependent value
@@ -217,10 +221,6 @@ async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> 
     drop(mapped_range);
     readback_buffer.unmap();
     result_data
-}
-
-async fn request_device(adapter: wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
-    adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
 fn main() {
