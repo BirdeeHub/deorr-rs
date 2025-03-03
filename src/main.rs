@@ -2,7 +2,7 @@ use wgpu::util::DeviceExt;
 use pollster::block_on;
 use std::time::Instant;
 
-fn get_adapter() -> wgpu::Adapter {
+fn get_adapter() -> Option<wgpu::Adapter> {
     // Initialize GPU
     let instance = wgpu::Instance::default();
 
@@ -28,7 +28,6 @@ fn get_adapter() -> wgpu::Adapter {
             println!("No discrete or integrated GPU found. Falling back to software rendering.");
             adapters.first().cloned() // Get the first available adapter
         })
-        .expect("Failed to find a suitable GPU adapter or fallback to software")
 }
 
 async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> Vec<u32> {
@@ -220,16 +219,21 @@ async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> 
     result_data
 }
 
-async fn request_device(adapter: wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
+async fn request_device(adapter: wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None)
         .await
-        .expect("Failed to create device")
 }
 
 fn main() {
-    let adapter = get_adapter();
+    let Some(adapter) = get_adapter() else {
+        println!("no gpu adapter found");
+        return
+    };
 
-    let (device, queue) = block_on(request_device(adapter));
+    let Ok((device, queue)) = block_on(request_device(adapter)) else {
+        println!("Failed to request device");
+        return
+    };
 
     let start = Instant::now();
 
