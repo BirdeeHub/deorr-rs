@@ -4,14 +4,31 @@ use pollster::block_on;
 async fn run() {
     // Initialize GPU
     let instance = wgpu::Instance::default();
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: None,
-            force_fallback_adapter: true, // Allow software adapter
+    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+
+    if adapters.is_empty() {
+        println!("No adapters found!");
+    } else {
+        for adapter in adapters {
+            println!("{:?}", adapter.get_info());
+        }
+    }
+
+    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+
+    let adapter = adapters
+        .iter()
+        .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu) // Prefer discrete GPU
+        .or_else(|| {
+            // If no discrete GPU, try for integrated GPU
+            adapters.iter().find(|a| a.get_info().device_type == wgpu::DeviceType::IntegratedGpu)
         })
-        .await
-        .expect("Failed to find GPU adapter");
+        .or_else(|| {
+            // If neither discrete nor integrated GPU, fall back to any available adapter
+            println!("No discrete or integrated GPU found. Falling back to software rendering.");
+            adapters.first()  // Get the first available adapter
+        })
+        .expect("Failed to find a suitable GPU adapter or fallback to software");
 
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor::default(), None)
@@ -19,33 +36,54 @@ async fn run() {
         .expect("Failed to create device");
 
     // Input data (array of f32 numbers)
-    let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    let buffer_size = (input_data.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+    let input_data = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let buffer_size = (input_data.len() * std::mem::size_of::<u8>()) as wgpu::BufferAddress;
 
-    // Create GPU buffers
+    // Create input buffer (READ-ONLY)
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
-        contents: bytemuck::cast_slice(&input_data),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        contents: &input_data,
+        usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
 
+    // Create output buffer (separate, writable)
     let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Output Buffer"),
+        size: buffer_size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    // Create a readback buffer (for CPU access)
+    let readback_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("Readback Buffer"),
         size: buffer_size,
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
-    // Compute shader in WGSL (WebGPU Shader Language)
+    // // Compute shader in WGSL
+    // TODO: input buffer was misaligned when using floats, figure out how do align it properly
+    // let shader_code = r#"
+    //     @group(0) @binding(0) var<storage, read> input_data: array<f32>;
+    //     @group(0) @binding(1) var<storage, read_write> output_data: array<f32>;
+    //
+    //     @compute @workgroup_size(64)
+    //     fn main(@builtin(global_invocation_id) id: vec3u) {
+    //         let i = id.x;
+    //         if (i < arrayLength(&input_data)) {
+    //             output_data[i] = input_data[i] * 2.0; // Read from input, write to output
+    //         }
+    //     }
+    // "#;
+    // Compute shader in WGSL
     let shader_code = r#"
-        @group(0) @binding(0) var<storage, read_write> data: array<f32>;
-
+        @group(0) @binding(0) var<storage, read> input_data: array<u32>;
+        @group(0) @binding(1) var<storage, read_write> output_data: array<u32>;
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
             let i = id.x;
-            if (i < arrayLength(&data)) {
-                data[i] = data[i] * 2.0; // Multiply each element by 2
-            }
+            output_data[i] = input_data[i];
         }
     "#;
 
@@ -55,25 +93,37 @@ async fn run() {
         source: wgpu::ShaderSource::Wgsl(shader_code.into()),
     });
 
-    // Define bind group layout before pipeline creation
+    // Define bind group layout
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("Bind Group Layout"),
-        entries: &[wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::COMPUTE,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                has_dynamic_offset: false,
-                min_binding_size: None,
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true }, // Input: Read-only
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
             },
-            count: None,
-        }],
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false }, // Output: Writable
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
     });
 
-    // Use the bind group layout in the pipeline layout
+    // Create pipeline layout
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Pipeline Layout"),
-        bind_group_layouts: &[&bind_group_layout], // ✅ Correctly specify the layout
+        bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
 
@@ -87,13 +137,18 @@ async fn run() {
     });
 
     // Create bind group
-    let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         layout: &bind_group_layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: input_buffer.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: input_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: output_buffer.as_entire_binding(),
+            },
+        ],
         label: Some("Bind Group"),
     });
 
@@ -105,7 +160,7 @@ async fn run() {
     {
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("Compute Pass"),
-            timestamp_writes: None, // New field
+            timestamp_writes: None,
         });
         compute_pass.set_pipeline(&compute_pipeline);
         compute_pass.set_bind_group(0, &bind_group, &[]);
@@ -113,11 +168,11 @@ async fn run() {
     }
 
     // Copy results back to CPU-readable buffer
-    encoder.copy_buffer_to_buffer(&input_buffer, 0, &output_buffer, 0, buffer_size);
+    encoder.copy_buffer_to_buffer(&output_buffer, 0, &readback_buffer, 0, buffer_size);
     queue.submit(Some(encoder.finish()));
 
     // Read output data
-    let buffer_slice = output_buffer.slice(..);
+    let buffer_slice = readback_buffer.slice(..);
     let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| sender.send(result).unwrap());
 
@@ -126,13 +181,13 @@ async fn run() {
 
     // Get mapped buffer data
     let mapped_range = buffer_slice.get_mapped_range();
-    let result_data: Vec<f32> = bytemuck::cast_slice(&mapped_range).to_vec();
+    let result_data: Vec<u8> = bytemuck::cast_slice(&mapped_range).to_vec();
     println!("Input:  {:?}", input_data);
     println!("Output: {:?}", result_data);
 
     // Unmap buffer
     drop(mapped_range);
-    output_buffer.unmap();
+    readback_buffer.unmap();
 }
 
 fn main() {

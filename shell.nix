@@ -29,15 +29,7 @@
     nativeBuildInputs = [ pkg-config ];
     buildInputs = with pkgs; [
       # fenix.packages.x86_64-linux.latest.toolchain
-      wasmtoolchain
-      (wasm-bindgen-cli.override {
-        version = "0.2.99";
-        hash = "sha256-1AN2E9t/lZhbXdVznhTcniy+7ZzlaEp/gwLEAucs6EA=";
-        cargoHash = "sha256-DbwAh8RJtW38LJp+J9Ht8fAROK9OabaJ85D9C/Vkve4=";
-      })
-      binaryen
-      wasm-tools
-      wasm-pack
+      fenix.packages.${system}.latest.toolchain
       cargo-edit
       alsa-lib
       udev
@@ -58,15 +50,6 @@
       vulkan-headers
       vulkan-loader
       vulkan-validation-layers
-      (pkgs.writeShellScriptBin "build_wasm_package" ''
-        if [ -d ./out ]; then
-          rm -rf ./out/*
-          RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo build --release --target wasm32-unknown-unknown
-          wasm-bindgen --no-typescript --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/day6vis.wasm
-          wasm-opt -Oz -o ./out/day6vis.wasm ./out/day6vis_bg.wasm
-          mv ./out/day6vis.wasm ./out/day6vis_bg.wasm
-        fi
-      '')
     ];
     LD_LIBRARY_PATH = "${lib.makeLibraryPath (with pkgs; [ alsa-lib udev vulkan-loader libxkbcommon])}";
     shellHook = ''
