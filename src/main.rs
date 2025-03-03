@@ -39,7 +39,6 @@ async fn run() {
 
     // Input data
     // TODO: figure out how to do generic alignment properly, only u32 works rn
-    // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9];
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
@@ -50,6 +49,7 @@ async fn run() {
         contents: bytemuck::cast_slice(&length_data),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
+    // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
     let mut padded_input_data = input_data.clone();
     let padding = (COPY_BUFFER_ALIGNMENT - (input_len as u64) % COPY_BUFFER_ALIGNMENT) % COPY_BUFFER_ALIGNMENT;
