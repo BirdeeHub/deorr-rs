@@ -31,12 +31,7 @@ fn get_adapter() -> wgpu::Adapter {
         .expect("Failed to find a suitable GPU adapter or fallback to software")
 }
 
-async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
-
-    let (device, queue) = adapter
-        .request_device(&wgpu::DeviceDescriptor::default(), None)
-        .await
-        .expect("Failed to create device");
+async fn run(device: wgpu::Device, queue: wgpu::Queue, input_data: Vec<u32>) -> Vec<u32> {
 
     // TODO: figure out how to detect this system dependent value
     const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
@@ -225,14 +220,22 @@ async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
     result_data
 }
 
+async fn request_device(adapter: wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
+    adapter.request_device(&wgpu::DeviceDescriptor::default(), None)
+        .await
+        .expect("Failed to create device")
+}
+
 fn main() {
     let adapter = get_adapter();
+
+    let (device, queue) = block_on(request_device(adapter));
 
     let start = Instant::now();
 
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
     println!("Input:  {:?}", input_data);
-    let output_data = block_on(run(adapter,input_data));
+    let output_data = block_on(run(device,queue,input_data));
     println!("Output: {:?}", output_data);
 
     println!("Time taken: {:?}", start.elapsed());
