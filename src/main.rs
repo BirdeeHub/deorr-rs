@@ -43,6 +43,7 @@ async fn run() {
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
+    // if you pass in length you dont need to remove padding
     let length_data = vec![input_len as u32];
     let length_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Length Buffer"),
