@@ -21,7 +21,7 @@
     appOverlay = final: prev: {
       # any pkgs overrides made here will be inherited in the arguments of default.nix
       # because we used final.callPackage instead of prev.callPackage
-      ${APPNAME} = final.callPackage ./native.nix ({ inherit APPNAME; } // inputs);
+      ${APPNAME} = final.callPackage ./. ({ inherit APPNAME; } // inputs);
     };
   in {
     overlays.default = appOverlay;
@@ -31,7 +31,6 @@
     in{
       packages = {
         default = pkgs.${APPNAME};
-        inherit (pkgs) day6vis-wasm;
       };
       devShells = {
         default = pkgs.callPackage ./shell.nix ({

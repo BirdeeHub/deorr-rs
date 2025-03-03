@@ -2,13 +2,7 @@
 , lib
 , makeRustPlatform
 , fenix
-, pkg-config
-, alsa-lib
-, udev
 , vulkan-loader
-, libxkbcommon
-, libX11
-, libxcb
 , makeWrapper
 , pkgs
 , system
@@ -18,22 +12,9 @@ APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
   pname = APPNAME;
   version = "0.0.0";
   src = ./.;
-  nativeBuildInputs = [ pkg-config makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
   buildInputs = with pkgs; [
-    alsa-lib
-    udev
     vulkan-loader
-    llvmPackages.bintools
-    clang
-    pkg-config
-    libX11
-    libxcb
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXrandr
-    xorg.libXi
-    xorg.libxkbfile
-    libxkbcommon
     vulkan-tools
     vulkan-headers
     vulkan-loader
@@ -46,7 +27,7 @@ APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
 
   postFixup = ''
     wrapProgram "$out/bin/${APPNAME}" \
-      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ alsa-lib udev vulkan-loader libxkbcommon]}
+      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ vulkan-loader ]}
   '';
 
 };
