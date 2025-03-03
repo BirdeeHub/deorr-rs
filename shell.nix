@@ -11,16 +11,6 @@
 # dev shells should not contain the final program.
 # They should have the environment
 # needed to BUILD (and run) the final program.
-  wasmtoolchain = with fenix.packages.${system}; combine [
-    (latest.withComponents [
-      "rustc"
-      "cargo"
-      "rustfmt"
-      "clippy"
-      "rust-src"
-    ])
-    targets.wasm32-unknown-unknown.latest.rust-std
-  ];
   DEVSHELL = mkShell {
     packages = [];
     inputsFrom = [];
