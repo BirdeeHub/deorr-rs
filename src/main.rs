@@ -47,7 +47,7 @@ async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
-    let mut padded_input_data = input_data.clone();
+    let mut padded_input_data = input_data;
     let padding = (COPY_BUFFER_ALIGNMENT - (input_len as u64) % COPY_BUFFER_ALIGNMENT) % COPY_BUFFER_ALIGNMENT;
     padded_input_data.extend(vec![0u32; padding as usize]);
 
@@ -226,6 +226,7 @@ async fn run(adapter: wgpu::Adapter, input_data: Vec<u32>) -> Vec<u32> {
 
 fn main() {
     let adapter = get_adapter();
+
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
     println!("Input:  {:?}", input_data);
     let output_data = block_on(run(adapter,input_data));
