@@ -35,7 +35,11 @@ async fn run() {
         .await
         .expect("Failed to create device");
 
-    // Input data (array of f32 numbers)
+    // Input data
+    // TODO: figure out how to do generic alignment properly
+    // Also, figure out COPY_BUFFER_ALIGNMENT issue with different sized arrays
+    // because it needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
+    // whatever that is.
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8];
     let buffer_size = (input_data.len() * std::mem::size_of::<u32>()) as wgpu::BufferAddress;
 
@@ -62,8 +66,8 @@ async fn run() {
         mapped_at_creation: false,
     });
 
-    // TODO: input buffer was misaligned when using floats, figure out how to align it properly
     // Compute shader in WGSL
+    // TODO: input buffer was misaligned when using floats, figure out how to align it properly
     let shader_code = r#"
         @group(0) @binding(0) var<storage, read> input_data: array<u32>;
         @group(0) @binding(1) var<storage, read_write> output_data: array<u32>;
