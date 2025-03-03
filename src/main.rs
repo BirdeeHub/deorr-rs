@@ -4,20 +4,19 @@ use pollster::block_on;
 async fn run() {
     // Initialize GPU
     let instance = wgpu::Instance::default();
-    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
 
     // TODO: figure out how to detect this system dependent value
     const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
 
+    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+
     if adapters.is_empty() {
         println!("No adapters found!");
     } else {
-        for adapter in adapters {
+        for adapter in &adapters {
             println!("{:?}", adapter.get_info());
         }
     }
-
-    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
 
     let adapter = adapters
         .iter()
