@@ -255,10 +255,10 @@ fn main() {
         return
     };
 
-    // let mut inputs = vec![vec![0; 1000];1000];
-    // inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
-    let mut inputs = vec![vec![0.0f32; 1000];1000];
-    inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0.0..1000.); }));
+    let mut inputs = vec![vec![0u32; 1000];1000];
+    inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
+    // let mut inputs = vec![vec![0.0f32; 1000];1000];
+    // inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0.0..1000.); }));
 
     let begin = Instant::now();
 
@@ -271,7 +271,8 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::F32));
+        outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::U32));
+        // outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::F32));
     }
 
     let outputs = block_on(futures::future::join_all(outputs));
