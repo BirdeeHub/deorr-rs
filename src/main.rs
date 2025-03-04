@@ -255,5 +255,4 @@ fn main() {
 
     println!("outputs: {:?}", outputs);
     println!("Total time: {:?}, Sort time: {:?}", total_time, sort_time);
-
 }
