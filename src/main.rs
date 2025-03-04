@@ -1,6 +1,7 @@
 use wgpu::util::DeviceExt;
 use pollster::block_on;
 use std::time::Instant;
+use futures::future::join_all;
 
 fn get_adapter() -> Option<wgpu::Adapter> {
     // Initialize GPU
@@ -223,7 +224,6 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
     readback_buffer.unmap();
     result_data
 }
-
 fn main() {
     let Some(adapter) = get_adapter() else {
         println!("no gpu adapter found");
@@ -232,7 +232,6 @@ fn main() {
 
     let mut inputs = vec![vec![0; 1000];1000];
     inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
-    let mut outputs = vec![vec![];1000];
 
     let begin = Instant::now();
 
@@ -240,13 +239,20 @@ fn main() {
         println!("Failed to request device");
         return
     };
+    let mut outputs = vec![];
 
     let start = Instant::now();
 
-    for (i, input_data) in inputs.iter().enumerate() {
-        outputs[i] = block_on(run(&adapter,&device,&queue,input_data));
+    for input_data in &inputs {
+        outputs.push(run(&adapter,&device,&queue,input_data));
     }
 
-    println!("Total time: {:?}, Sort time: {:?}", begin.elapsed(), start.elapsed());
+    let outputs = block_on(join_all(outputs));
+
+    let total_time = begin.elapsed();
+    let sort_time = start.elapsed();
+
+    println!("outputs: {:?}", outputs);
+    println!("Total time: {:?}, Sort time: {:?}", total_time, sort_time);
 
 }
