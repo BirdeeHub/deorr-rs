@@ -74,7 +74,7 @@ async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, q
     if !wgpu_type.check_type::<T>() {
         panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
     }
-    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().expect("SHOULD NEVER HAPPEN (no check for empty array)"))) as wgpu::BufferAddress;
+    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().unwrap())) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
