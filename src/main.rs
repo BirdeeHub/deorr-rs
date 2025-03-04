@@ -42,7 +42,7 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
     if input_len == 0 {
         return vec![]
     }
-    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().unwrap_or(&0))) as wgpu::BufferAddress;
+    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().expect("SHOULD NEVER HAPPEN (no check for empty array)"))) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
