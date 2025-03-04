@@ -25,20 +25,11 @@ impl WgpuType {
         T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
     {
         match self {
-            WgpuType::F32 => val_is::<T, f32>(),
-            WgpuType::U32 => val_is::<T, u32>(),
-            WgpuType::I32 => val_is::<T, i32>(),
+            WgpuType::F32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<f32>(),
+            WgpuType::U32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<u32>(),
+            WgpuType::I32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<i32>(),
         }
     }
-}
-
-// Helper function that checks if T matches the expected type
-fn val_is<T, U>() -> bool
-where
-    T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
-    U: 'static, // Add the 'static bound to ensure U is a valid type at runtime
-{
-    std::any::TypeId::of::<T>() == std::any::TypeId::of::<U>()
 }
 
 fn get_adapter() -> Option<wgpu::Adapter> {
