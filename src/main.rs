@@ -35,7 +35,7 @@ async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
-async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> Vec<u32> {
+async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], type_name_wgpu: &str) -> Vec<T> {
 
     // Input data
     let input_len = input_data.len();
@@ -84,10 +84,9 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
     });
 
     // Compute shader in WGSL
-    // TODO: figure out how to do generic alignment properly, only u32 works rn
     let shader_code = r#"
-        @group(0) @binding(0) var<storage, read> input_data: array<u32>;
-        @group(0) @binding(1) var<storage, read_write> output_data: array<u32>;
+        @group(0) @binding(0) var<storage, read> input_data: array<"#.to_string() + type_name_wgpu + r#">;
+        @group(0) @binding(1) var<storage, read_write> output_data: array<"# + type_name_wgpu + r#">;
         @group(0) @binding(2) var<storage, read> length_data: u32;
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
@@ -245,7 +244,7 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        outputs.push(run(&adapter,&device,&queue,input_data));
+        outputs.push(run(&adapter,&device,&queue, input_data, "u32"));
     }
 
     let outputs = block_on(join_all(outputs));
