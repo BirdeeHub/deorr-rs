@@ -230,8 +230,10 @@ fn main() {
         return
     };
 
-    let mut inputs = vec![vec![0; 1000];1000];
-    inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
+    // let mut inputs = vec![vec![0; 1000];1000];
+    // inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
+    let mut inputs = vec![vec![0.0f32; 1000];1000];
+    inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0.0..1000.); }));
 
     let begin = Instant::now();
 
@@ -244,7 +246,8 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        outputs.push(run(&adapter,&device,&queue, input_data, "u32"));
+        // outputs.push(run(&adapter,&device,&queue, input_data, "u32"));
+        outputs.push(run(&adapter,&device,&queue, input_data, "f32"));
     }
 
     let outputs = block_on(join_all(outputs));
