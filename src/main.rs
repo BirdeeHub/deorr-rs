@@ -1,7 +1,4 @@
 use wgpu::util::DeviceExt;
-use pollster::block_on;
-use std::time::Instant;
-use futures::future::join_all;
 
 enum WgpuType {
     F32,
@@ -256,6 +253,8 @@ async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, q
     result_data
 }
 
+use pollster::block_on;
+use std::time::Instant;
 fn main() {
     let Some(adapter) = get_adapter() else {
         println!("no gpu adapter found");
@@ -281,7 +280,7 @@ fn main() {
         outputs.push(run(&adapter,&device,&queue, input_data, WgpuType::F32));
     }
 
-    let outputs = block_on(join_all(outputs));
+    let outputs = block_on(futures::future::join_all(outputs));
 
     let total_time = begin.elapsed();
     let sort_time = start.elapsed();
