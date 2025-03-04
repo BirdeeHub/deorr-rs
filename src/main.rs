@@ -3,6 +3,44 @@ use pollster::block_on;
 use std::time::Instant;
 use futures::future::join_all;
 
+enum WgpuType {
+    F32,
+    U32,
+    I32,
+}
+
+impl std::fmt::Display for WgpuType {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        fmt.write_str(match self {
+            WgpuType::F32 => "f32",
+            WgpuType::U32 => "u32",
+            WgpuType::I32 => "i32",
+        })
+    }
+}
+
+impl WgpuType {
+    fn check_type<T>(&self) -> bool
+    where
+        T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
+    {
+        match self {
+            WgpuType::F32 => val_is::<T, f32>(),
+            WgpuType::U32 => val_is::<T, u32>(),
+            WgpuType::I32 => val_is::<T, i32>(),
+        }
+    }
+}
+
+// Helper function that checks if T matches the expected type
+fn val_is<T, U>() -> bool
+where
+    T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
+    U: 'static, // Add the 'static bound to ensure U is a valid type at runtime
+{
+    std::any::TypeId::of::<T>() == std::any::TypeId::of::<U>()
+}
+
 fn get_adapter() -> Option<wgpu::Adapter> {
     // Initialize GPU
     let instance = wgpu::Instance::default();
@@ -35,14 +73,18 @@ async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
-async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], type_name_wgpu: &str) -> Vec<T> {
+async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
 
     // Input data
     let input_len = input_data.len();
     if input_len == 0 {
         return vec![]
     }
-    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().expect("SHOULD NEVER HAPPEN (no check for empty array)"))) as wgpu::BufferAddress;
+    let first = input_data.first().expect("SHOULD NEVER HAPPEN (no check for empty array)");
+    if !wgpu_type.check_type::<T>() {
+        panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
+    }
+    let buffer_size = (input_len * std::mem::size_of_val(first)) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
@@ -85,8 +127,8 @@ async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, q
 
     // Compute shader in WGSL
     let shader_code = r#"
-        @group(0) @binding(0) var<storage, read> input_data: array<"#.to_string() + type_name_wgpu + r#">;
-        @group(0) @binding(1) var<storage, read_write> output_data: array<"# + type_name_wgpu + r#">;
+        @group(0) @binding(0) var<storage, read> input_data: array<"#.to_string() + &wgpu_type.to_string() + r#">;
+        @group(0) @binding(1) var<storage, read_write> output_data: array<"# + &wgpu_type.to_string() + r#">;
         @group(0) @binding(2) var<storage, read> length_data: u32;
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
@@ -246,8 +288,7 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        // outputs.push(run(&adapter,&device,&queue, input_data, "u32"));
-        outputs.push(run(&adapter,&device,&queue, input_data, "f32"));
+        outputs.push(run(&adapter,&device,&queue, input_data, WgpuType::F32));
     }
 
     let outputs = block_on(join_all(outputs));
