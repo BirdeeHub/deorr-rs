@@ -243,12 +243,12 @@ fn main() {
     let start = Instant::now();
     let output_data = block_on(run(&adapter,&device,&queue,&input_data));
     println!("Time taken 1: {:?}", start.elapsed());
-    println!("Output: {:?}", output_data);
 
     let start = Instant::now();
-    let output_data = block_on(run(&adapter,&device,&queue,&input_data_2));
+    let output_data_2 = block_on(run(&adapter,&device,&queue,&input_data_2));
     println!("Time taken 2: {:?}", start.elapsed());
-    println!("Output: {:?}", output_data);
 
     println!("Time taken total: {:?}", beginning.elapsed());
+    println!("Output 1: {:?}", output_data);
+    println!("Output 2: {:?}", output_data_2);
 }
