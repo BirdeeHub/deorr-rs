@@ -38,6 +38,9 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
 
     // Input data
     let input_len = input_data.len();
+    if input_len == 0 {
+        return vec![]
+    }
     let buffer_size = (input_len * std::mem::size_of_val(input_data.first().unwrap_or(&0))) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
@@ -227,13 +230,11 @@ fn main() {
         return
     };
 
-    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
-    println!("Input 1:  {:?}", input_data);
-    let mut input_data_2 = vec![0u32; 1000];
-    input_data_2.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); });
-    println!("Input 2:  {:?}", input_data_2);
+    let mut inputs = vec![vec![0; 1000];1000];
+    inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
+    let mut outputs = vec![vec![];1000];
 
-    let beginning = Instant::now();
+    let begin = Instant::now();
 
     let Ok((device, queue)) = block_on(request_device(&adapter)) else {
         println!("Failed to request device");
@@ -241,14 +242,11 @@ fn main() {
     };
 
     let start = Instant::now();
-    let output_data = block_on(run(&adapter,&device,&queue,&input_data));
-    println!("Time taken 1: {:?}", start.elapsed());
 
-    let start = Instant::now();
-    let output_data_2 = block_on(run(&adapter,&device,&queue,&input_data_2));
-    println!("Time taken 2: {:?}", start.elapsed());
+    for (i, input_data) in inputs.iter().enumerate() {
+        outputs[i] = block_on(run(&adapter,&device,&queue,input_data));
+    }
 
-    println!("Time taken total: {:?}", beginning.elapsed());
-    println!("Output 1: {:?}", output_data);
-    println!("Output 2: {:?}", output_data_2);
+    println!("Total time: {:?}, Sort time: {:?}", begin.elapsed(), start.elapsed());
+
 }
