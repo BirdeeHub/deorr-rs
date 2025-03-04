@@ -83,10 +83,9 @@ async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, q
     });
 
     // if you pass in length you dont need to remove padding
-    let length_data = vec![input_len as u32];
     let length_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Length Buffer"),
-        contents: bytemuck::cast_slice(&length_data),
+        contents: bytemuck::cast_slice(&[input_len as u32]),
         usage: wgpu::BufferUsages::STORAGE, // No COPY_SRC, since we don’t modify it
     });
 
