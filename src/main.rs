@@ -57,7 +57,7 @@ async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
-async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
+async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
     if !wgpu_type.check_type::<T>() {
         panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
     }
@@ -271,7 +271,7 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        outputs.push(run(&adapter,&device,&queue, input_data, WgpuType::F32));
+        outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::F32));
     }
 
     let outputs = block_on(futures::future::join_all(outputs));
