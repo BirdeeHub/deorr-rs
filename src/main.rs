@@ -44,8 +44,7 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
     // If input data length is not aligned, pad it
     let limits = adapter.limits();
     let copy_buffer_alignment: wgpu::BufferAddress = limits.min_storage_buffer_offset_alignment.into();
-    let padded_size = buffer_size.div_ceil(copy_buffer_alignment) * copy_buffer_alignment;
-    let padding = padded_size - buffer_size;
+    let padding = (buffer_size.div_ceil(copy_buffer_alignment) * copy_buffer_alignment) - buffer_size;
     let mut padded_input_data = bytemuck::cast_slice(input_data).to_vec();
     padded_input_data.extend(vec![0u8; padding as usize]);
 
