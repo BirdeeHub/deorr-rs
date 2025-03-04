@@ -21,10 +21,11 @@ impl WgpuType {
     where
         T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
     {
+        use std::any::TypeId;
         match self {
-            WgpuType::F32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<f32>(),
-            WgpuType::U32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<u32>(),
-            WgpuType::I32 => std::any::TypeId::of::<T>() == std::any::TypeId::of::<i32>(),
+            WgpuType::F32 => TypeId::of::<T>() == TypeId::of::<f32>(),
+            WgpuType::U32 => TypeId::of::<T>() == TypeId::of::<u32>(),
+            WgpuType::I32 => TypeId::of::<T>() == TypeId::of::<i32>(),
         }
     }
 }
