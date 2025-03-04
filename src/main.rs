@@ -227,6 +227,8 @@ fn main() {
         return
     };
 
+    let beginning = Instant::now();
+
     let Ok((device, queue)) = block_on(request_device(&adapter)) else {
         println!("Failed to request device");
         return
@@ -236,7 +238,7 @@ fn main() {
     println!("Input:  {:?}", input_data);
     let start = Instant::now();
     let output_data = block_on(run(&adapter,&device,&queue,&input_data));
-    println!("Time taken: {:?}", start.elapsed());
+    println!("Time taken 1: {:?}", start.elapsed());
     println!("Output: {:?}", output_data);
 
     let mut input_data = vec![0u32; 1000];
@@ -244,6 +246,8 @@ fn main() {
     println!("Input:  {:?}", input_data);
     let start = Instant::now();
     let output_data = block_on(run(&adapter,&device,&queue,&input_data));
-    println!("Time taken: {:?}", start.elapsed());
+    println!("Time taken 2: {:?}", start.elapsed());
     println!("Output: {:?}", output_data);
+
+    println!("Time taken total: {:?}", beginning.elapsed());
 }
