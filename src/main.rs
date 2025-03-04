@@ -2,9 +2,6 @@ use wgpu::util::DeviceExt;
 use pollster::block_on;
 use std::time::Instant;
 
-// TODO: figure out how to detect this system dependent value
-const COPY_BUFFER_ALIGNMENT: wgpu::BufferAddress = 256;
-
 fn get_adapter() -> Option<wgpu::Adapter> {
     // Initialize GPU
     let instance = wgpu::Instance::default();
@@ -33,28 +30,29 @@ fn get_adapter() -> Option<wgpu::Adapter> {
         })
 }
 
-async fn request_device(adapter: wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
+async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
-async fn run(device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> Vec<u32> {
+async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> Vec<u32> {
 
     // Input data
-    // TODO: figure out how to do generic alignment properly, only u32 works rn
     let input_len = input_data.len();
-    let buffer_size = (input_len * std::mem::size_of_val(input_data)) as wgpu::BufferAddress;
+    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().unwrap_or(&0))) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
-    let mut padded_input_data = input_data.to_vec();
-    let padding = (COPY_BUFFER_ALIGNMENT - (input_len as u64) % COPY_BUFFER_ALIGNMENT) % COPY_BUFFER_ALIGNMENT;
-    padded_input_data.extend(vec![0u32; padding as usize]);
+    let limits = adapter.limits();
+    let copy_buffer_alignment: wgpu::BufferAddress = limits.min_storage_buffer_offset_alignment.into();
+    let padded_size = buffer_size.div_ceil(copy_buffer_alignment) * copy_buffer_alignment;
+    let padding = padded_size - buffer_size;
+    let mut padded_input_data = bytemuck::cast_slice(input_data).to_vec();
+    padded_input_data.extend(vec![0u8; padding as usize]);
 
     // Create input buffer (READ-ONLY)
-    // TODO: figure out how to do generic alignment properly, only u32 works rn
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Input Buffer"),
-        contents: bytemuck::cast_slice(&padded_input_data),
+        contents: &padded_input_data,
         usage: wgpu::BufferUsages::STORAGE, // No COPY_DST, since we don’t modify it
     });
 
@@ -83,7 +81,7 @@ async fn run(device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[u32]) -> 
     });
 
     // Compute shader in WGSL
-    // TODO: input buffer was misaligned when using floats, figure out how to align it properly
+    // TODO: figure out how to do generic alignment properly, only u32 works rn
     let shader_code = r#"
         @group(0) @binding(0) var<storage, read> input_data: array<u32>;
         @group(0) @binding(1) var<storage, read_write> output_data: array<u32>;
@@ -230,17 +228,23 @@ fn main() {
         return
     };
 
-    let Ok((device, queue)) = block_on(request_device(adapter)) else {
+    let Ok((device, queue)) = block_on(request_device(&adapter)) else {
         println!("Failed to request device");
         return
     };
 
-    let start = Instant::now();
-
     let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
     println!("Input:  {:?}", input_data);
-    let output_data = block_on(run(&device,&queue,&input_data));
+    let start = Instant::now();
+    let output_data = block_on(run(&adapter,&device,&queue,&input_data));
+    println!("Time taken: {:?}", start.elapsed());
     println!("Output: {:?}", output_data);
 
+    let mut input_data = vec![0u32; 1000];
+    input_data.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); });
+    println!("Input:  {:?}", input_data);
+    let start = Instant::now();
+    let output_data = block_on(run(&adapter,&device,&queue,&input_data));
     println!("Time taken: {:?}", start.elapsed());
+    println!("Output: {:?}", output_data);
 }
