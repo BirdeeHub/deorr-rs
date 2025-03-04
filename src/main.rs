@@ -224,6 +224,7 @@ async fn run(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue
     readback_buffer.unmap();
     result_data
 }
+
 fn main() {
     let Some(adapter) = get_adapter() else {
         println!("no gpu adapter found");
