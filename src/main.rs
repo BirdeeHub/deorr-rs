@@ -23,9 +23,9 @@ impl WgpuType {
     {
         use std::any::TypeId;
         match self {
-            WgpuType::F32 => TypeId::of::<T>() == TypeId::of::<f32>(),
-            WgpuType::U32 => TypeId::of::<T>() == TypeId::of::<u32>(),
-            WgpuType::I32 => TypeId::of::<T>() == TypeId::of::<i32>(),
+            WgpuType::F32 => TypeId::of::<f32>() == TypeId::of::<T>(),
+            WgpuType::U32 => TypeId::of::<u32>() == TypeId::of::<T>(),
+            WgpuType::I32 => TypeId::of::<i32>() == TypeId::of::<T>(),
         }
     }
 }
