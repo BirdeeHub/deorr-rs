@@ -30,11 +30,7 @@ impl WgpuType {
 }
 
 fn get_adapter() -> Option<wgpu::Adapter> {
-    // Initialize GPU
-    let instance = wgpu::Instance::default();
-
-    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-
+    let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
     if adapters.is_empty() {
         println!("No adapters found!");
     } else {
@@ -42,7 +38,6 @@ fn get_adapter() -> Option<wgpu::Adapter> {
             println!("{:?}", adapter.get_info());
         }
     }
-
     adapters.clone()
         .into_iter()
         .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu) // Prefer discrete GPU
@@ -62,16 +57,15 @@ async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::
 }
 
 async fn run<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
-
-    // Input data
-    let input_len = input_data.len();
-    if input_len == 0 {
-        return vec![]
-    }
     if !wgpu_type.check_type::<T>() {
         panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
     }
-    let buffer_size = (input_len * std::mem::size_of_val(input_data.first().unwrap())) as wgpu::BufferAddress;
+
+    let input_len = input_data.len();
+    let buffer_size = (input_len * std::mem::size_of_val(match input_data.first() {
+        Some(v) => v,
+        None => return vec![],
+    })) as wgpu::BufferAddress;
 
     // NOTE: input needs to be even factor or multiple of the COPY_BUFFER_ALIGNMENT
     // If input data length is not aligned, pad it
