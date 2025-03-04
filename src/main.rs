@@ -227,6 +227,12 @@ fn main() {
         return
     };
 
+    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
+    println!("Input 1:  {:?}", input_data);
+    let mut input_data_2 = vec![0u32; 1000];
+    input_data_2.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); });
+    println!("Input 2:  {:?}", input_data_2);
+
     let beginning = Instant::now();
 
     let Ok((device, queue)) = block_on(request_device(&adapter)) else {
@@ -234,18 +240,13 @@ fn main() {
         return
     };
 
-    let input_data = vec![2, 5, 1, 7, 3, 3, 6, 8, 9, 4, 77, 33];
-    println!("Input:  {:?}", input_data);
     let start = Instant::now();
     let output_data = block_on(run(&adapter,&device,&queue,&input_data));
     println!("Time taken 1: {:?}", start.elapsed());
     println!("Output: {:?}", output_data);
 
-    let mut input_data = vec![0u32; 1000];
-    input_data.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); });
-    println!("Input:  {:?}", input_data);
     let start = Instant::now();
-    let output_data = block_on(run(&adapter,&device,&queue,&input_data));
+    let output_data = block_on(run(&adapter,&device,&queue,&input_data_2));
     println!("Time taken 2: {:?}", start.elapsed());
     println!("Output: {:?}", output_data);
 
