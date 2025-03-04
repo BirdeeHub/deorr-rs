@@ -30,33 +30,6 @@ impl WgpuType {
     }
 }
 
-fn get_adapter() -> Option<wgpu::Adapter> {
-    let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
-    if adapters.is_empty() {
-        println!("No adapters found!");
-    } else {
-        for adapter in &adapters {
-            println!("{:?}", adapter.get_info());
-        }
-    }
-    adapters.clone()
-        .into_iter()
-        .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu) // Prefer discrete GPU
-        .or_else(|| {
-            // If no discrete GPU, try for integrated GPU
-            adapters.iter().find(|a| a.get_info().device_type == wgpu::DeviceType::IntegratedGpu).cloned()
-        })
-        .or_else(|| {
-            // If neither discrete nor integrated GPU, fall back to any available adapter
-            println!("No discrete or integrated GPU found. Falling back to software rendering.");
-            adapters.first().cloned() // Get the first available adapter
-        })
-}
-
-async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
-    adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
-}
-
 async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
     if !wgpu_type.check_type::<T>() {
         panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
@@ -245,6 +218,33 @@ async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device,
     drop(mapped_range);
     readback_buffer.unmap();
     result_data
+}
+
+fn get_adapter() -> Option<wgpu::Adapter> {
+    let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
+    if adapters.is_empty() {
+        println!("No adapters found!");
+    } else {
+        for adapter in &adapters {
+            println!("{:?}", adapter.get_info());
+        }
+    }
+    adapters.clone()
+        .into_iter()
+        .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu) // Prefer discrete GPU
+        .or_else(|| {
+            // If no discrete GPU, try for integrated GPU
+            adapters.iter().find(|a| a.get_info().device_type == wgpu::DeviceType::IntegratedGpu).cloned()
+        })
+        .or_else(|| {
+            // If neither discrete nor integrated GPU, fall back to any available adapter
+            println!("No discrete or integrated GPU found. Falling back to software rendering.");
+            adapters.first().cloned() // Get the first available adapter
+        })
+}
+
+async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
+    adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
 use pollster::block_on;
