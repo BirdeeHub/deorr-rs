@@ -14,7 +14,6 @@ APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
   src = ./.;
   nativeBuildInputs = [ makeWrapper ];
   buildInputs = with pkgs; [
-    vulkan-loader
     vulkan-tools
     vulkan-headers
     vulkan-loader
