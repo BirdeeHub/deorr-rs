@@ -21,7 +21,6 @@
       vulkan-loader
       vulkan-tools
       vulkan-headers
-      vulkan-loader
       vulkan-validation-layers
     ];
     LD_LIBRARY_PATH = "${lib.makeLibraryPath (with pkgs; [ vulkan-loader ])}";
