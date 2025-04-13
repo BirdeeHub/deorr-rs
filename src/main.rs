@@ -49,8 +49,8 @@ impl std::fmt::Display for DeorrTypeError {
 impl std::error::Error for DeorrTypeError {}
 
 pub struct DeorrInput<'a, T: bytemuck::Pod> {
-    v: &'a[T],
-    t: DeorrType,
+    pub v: &'a[T],
+    pub t: DeorrType,
 }
 
 impl<'a, T: bytemuck::Pod> Deref for DeorrInput<'a, T> {
