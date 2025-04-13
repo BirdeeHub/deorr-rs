@@ -23,7 +23,7 @@ impl DeorrType {
     fn allowed_type_names() -> &'static [&'static str] {
         &["f32", "u32", "i32"]
     }
-    fn from_input<T: 'static>(_: &[T]) -> Result<Self, DeorrTypeError> {
+    pub fn from_input<T: 'static>(_: &[T]) -> Result<Self, DeorrTypeError> {
         match TypeId::of::<T>() {
             t if t == TypeId::of::<f32>() => Ok(DeorrType::F32),
             t if t == TypeId::of::<u32>() => Ok(DeorrType::U32),
