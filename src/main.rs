@@ -23,7 +23,7 @@ impl DeorrType {
     fn allowed_type_names() -> &'static [&'static str] {
         &["f32", "u32", "i32"]
     }
-    pub fn from_input<T: 'static>(_: &[T]) -> Result<Self, DeorrTypeError> {
+    pub fn from_t<T: 'static>() -> Result<Self, DeorrTypeError> {
         match TypeId::of::<T>() {
             t if t == TypeId::of::<f32>() => Ok(DeorrType::F32),
             t if t == TypeId::of::<u32>() => Ok(DeorrType::U32),
@@ -68,7 +68,7 @@ impl<T: bytemuck::Pod> DerefMut for DeorrInput<'_, T> {
 
 impl<'a, T: bytemuck::Pod> DeorrInput<'a, T> {
     pub fn new(input: &'a[T]) -> Result<Self, DeorrTypeError> {
-        Ok(Self{v:input, t:DeorrType::from_input(input)?})
+        Ok(Self{v:input, t:DeorrType::from_t::<T>()?})
     }
 }
 
