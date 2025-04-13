@@ -1,40 +1,78 @@
 use wgpu::util::DeviceExt;
+use std::any::TypeId;
+use std::ops::DerefMut;
+use std::ops::Deref;
 
-enum WgpuType {
+enum DeorrType {
     F32,
     U32,
-    I32,
+    I32
 }
 
-impl std::fmt::Display for WgpuType {
+impl std::fmt::Display for DeorrType {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         fmt.write_str(match self {
-            WgpuType::F32 => "f32",
-            WgpuType::U32 => "u32",
-            WgpuType::I32 => "i32",
+            DeorrType::F32 => "f32",
+            DeorrType::U32 => "u32",
+            DeorrType::I32 => "i32",
         })
     }
 }
 
-impl WgpuType {
-    fn check_type<T>(&self) -> bool
-    where
-        T: 'static, // Add the 'static bound to ensure T is a valid type at runtime
-    {
-        use std::any::TypeId;
-        match self {
-            WgpuType::F32 => TypeId::of::<f32>() == TypeId::of::<T>(),
-            WgpuType::U32 => TypeId::of::<u32>() == TypeId::of::<T>(),
-            WgpuType::I32 => TypeId::of::<i32>() == TypeId::of::<T>(),
+impl DeorrType {
+    pub fn allowed_type_names() -> &'static [&'static str] {
+        &["f32", "u32", "i32"]
+    }
+    fn from_input<T: 'static>(_: &[T]) -> Result<Self, DeorrTypeError> {
+        match TypeId::of::<T>() {
+            t if t == TypeId::of::<f32>() => Ok(DeorrType::F32),
+            t if t == TypeId::of::<u32>() => Ok(DeorrType::U32),
+            t if t == TypeId::of::<i32>() => Ok(DeorrType::I32),
+            _ => Err(DeorrTypeError)
         }
     }
 }
 
-async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: &[T], wgpu_type: WgpuType) -> Vec<T> {
-    if !wgpu_type.check_type::<T>() {
-        panic!("Type mismatch: {} and {}", wgpu_type, std::any::type_name::<T>());
-    }
+#[derive(Debug)]
+pub struct DeorrTypeError;
 
+impl std::fmt::Display for DeorrTypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Unsupported type for DeorrInput: only {} are allowed",
+            DeorrType::allowed_type_names().join(", ")
+        )
+    }
+}
+
+impl std::error::Error for DeorrTypeError {}
+
+pub struct DeorrInput<'a, T: bytemuck::Pod> {
+    v: &'a[T],
+    t: DeorrType,
+}
+
+impl<'a, T: bytemuck::Pod> Deref for DeorrInput<'a, T> {
+    type Target = &'a[T];
+    fn deref(&self) -> &Self::Target {
+        &self.v
+    }
+}
+
+impl<'a, T: bytemuck::Pod> DerefMut for DeorrInput<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.v
+    }
+}
+
+impl<'a, T: bytemuck::Pod> DeorrInput<'a, T> {
+    fn new(input: &'a[T]) -> Result<Self, DeorrTypeError> {
+        Ok(Self{v:input, t:DeorrType::from_input(input)?})
+    }
+}
+
+async fn deorr<'a, T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: DeorrInput<'a, T>) -> Vec<T> {
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of_val(match input_data.first() {
         Some(v) => v,
@@ -46,7 +84,7 @@ async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device,
     let limits = adapter.limits();
     let copy_buffer_alignment: wgpu::BufferAddress = limits.min_storage_buffer_offset_alignment.into();
     let padding = (buffer_size.div_ceil(copy_buffer_alignment) * copy_buffer_alignment) - buffer_size;
-    let mut padded_input_data = bytemuck::cast_slice(input_data).to_vec();
+    let mut padded_input_data = bytemuck::cast_slice(*input_data).to_vec();
     padded_input_data.extend(vec![0u8; padding as usize]);
 
     // Create input buffer (READ-ONLY)
@@ -81,8 +119,8 @@ async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device,
 
     // Compute shader in WGSL
     let shader_code = r#"
-        @group(0) @binding(0) var<storage, read> input_data: array<"#.to_string() + &wgpu_type.to_string() + r#">;
-        @group(0) @binding(1) var<storage, read_write> output_data: array<"# + &wgpu_type.to_string() + r#">;
+        @group(0) @binding(0) var<storage, read> input_data: array<"#.to_string() + &input_data.t.to_string() + r#">;
+        @group(0) @binding(1) var<storage, read_write> output_data: array<"# + &input_data.t.to_string() + r#">;
         @group(0) @binding(2) var<storage, read> length_data: u32;
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) id: vec3u) {
@@ -271,8 +309,7 @@ fn main() {
     let start = Instant::now();
 
     for input_data in &inputs {
-        outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::U32));
-        // outputs.push(deorr(&adapter,&device,&queue, input_data, WgpuType::F32));
+        outputs.push(deorr(&adapter,&device,&queue, DeorrInput::new(input_data).unwrap()));
     }
 
     let outputs = block_on(futures::future::join_all(outputs));
