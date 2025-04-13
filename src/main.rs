@@ -297,6 +297,8 @@ fn main() {
     inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
     // let mut inputs = vec![vec![0.0f32; 1000];1000];
     // inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0.0..1000.); }));
+    // let mut inputs = vec![vec![0i32; 1000];1000];
+    // inputs.iter_mut().for_each(|row| row.iter_mut().for_each(|v| { *v = rand::random_range(0..1000); }));
 
     let begin = Instant::now();
 
