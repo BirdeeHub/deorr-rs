@@ -72,7 +72,7 @@ impl<'a, T: bytemuck::Pod> DeorrInput<'a, T> {
     }
 }
 
-pub async fn deorr<'a, T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: DeorrInput<'a, T>) -> Vec<T> {
+pub async fn deorr<T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: DeorrInput<'_, T>) -> Vec<T> {
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of_val(match input_data.first() {
         Some(v) => v,
