@@ -3,7 +3,7 @@ use std::any::TypeId;
 use std::ops::DerefMut;
 use std::ops::Deref;
 
-enum DeorrType {
+pub enum DeorrType {
     F32,
     U32,
     I32
@@ -20,7 +20,7 @@ impl std::fmt::Display for DeorrType {
 }
 
 impl DeorrType {
-    pub fn allowed_type_names() -> &'static [&'static str] {
+    fn allowed_type_names() -> &'static [&'static str] {
         &["f32", "u32", "i32"]
     }
     fn from_input<T: 'static>(_: &[T]) -> Result<Self, DeorrTypeError> {
@@ -60,19 +60,19 @@ impl<'a, T: bytemuck::Pod> Deref for DeorrInput<'a, T> {
     }
 }
 
-impl<'a, T: bytemuck::Pod> DerefMut for DeorrInput<'a, T> {
+impl<T: bytemuck::Pod> DerefMut for DeorrInput<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.v
     }
 }
 
 impl<'a, T: bytemuck::Pod> DeorrInput<'a, T> {
-    fn new(input: &'a[T]) -> Result<Self, DeorrTypeError> {
+    pub fn new(input: &'a[T]) -> Result<Self, DeorrTypeError> {
         Ok(Self{v:input, t:DeorrType::from_input(input)?})
     }
 }
 
-async fn deorr<'a, T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: DeorrInput<'a, T>) -> Vec<T> {
+pub async fn deorr<'a, T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue, input_data: DeorrInput<'a, T>) -> Vec<T> {
     let input_len = input_data.len();
     let buffer_size = (input_len * std::mem::size_of_val(match input_data.first() {
         Some(v) => v,
@@ -258,7 +258,7 @@ async fn deorr<'a, T: bytemuck::Pod>(adapter: &wgpu::Adapter, device: &wgpu::Dev
     result_data
 }
 
-fn get_adapter() -> Option<wgpu::Adapter> {
+pub fn get_adapter() -> Option<wgpu::Adapter> {
     let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
     if adapters.is_empty() {
         println!("No adapters found!");
@@ -281,7 +281,7 @@ fn get_adapter() -> Option<wgpu::Adapter> {
         })
 }
 
-async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
+pub async fn request_device(adapter: &wgpu::Adapter) -> Result<(wgpu::Device, wgpu::Queue),wgpu::RequestDeviceError> {
     adapter.request_device(&wgpu::DeviceDescriptor::default(), None).await
 }
 
