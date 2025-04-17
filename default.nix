@@ -2,7 +2,6 @@
 , makeRustPlatform
 , fenix
 , vulkan-loader
-, pkgs
 , system
 , ...
 }:
@@ -10,7 +9,7 @@
   pname = APPNAME;
   version = "0.0.0";
   src = ./.;
-  buildInputs = with pkgs; [
+  buildInputs = [
     vulkan-loader
   ];
   cargoLock = {
