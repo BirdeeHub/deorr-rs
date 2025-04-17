@@ -5,8 +5,8 @@
 , pkgs
 , system
 , ...
-}: let
-APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
+}:
+(makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
   pname = APPNAME;
   version = "0.0.0";
   src = ./.;
@@ -20,6 +20,4 @@ APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
     patchelf $out/bin/${APPNAME} --add-needed libvulkan.so
     patchelf $out/bin/${APPNAME} --add-rpath ${vulkan-loader}/lib
   '';
-};
-in
-APPDRV
+}
