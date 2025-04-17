@@ -1,9 +1,7 @@
 { APPNAME
-, lib
 , makeRustPlatform
 , fenix
 , vulkan-loader
-, makeWrapper
 , pkgs
 , system
 , ...
@@ -12,23 +10,16 @@ APPDRV = (makeRustPlatform fenix.packages.${system}.latest).buildRustPackage {
   pname = APPNAME;
   version = "0.0.0";
   src = ./.;
-  nativeBuildInputs = [ makeWrapper ];
   buildInputs = with pkgs; [
-    vulkan-tools
-    vulkan-headers
     vulkan-loader
-    vulkan-validation-layers
   ];
-
   cargoLock = {
     lockFileContents = builtins.readFile ./Cargo.lock;
   };
-
-  postFixup = ''
-    wrapProgram "$out/bin/${APPNAME}" \
-      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ vulkan-loader ]}
+  postInstall = ''
+    patchelf $out/bin/${APPNAME} --add-needed libvulkan.so
+    patchelf $out/bin/${APPNAME} --add-rpath ${vulkan-loader}/lib
   '';
-
 };
 in
 APPDRV
